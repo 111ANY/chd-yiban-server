@@ -5,8 +5,10 @@ namespace app\api\controller;
 use app\common\controller\Api;
 use think\Config;
 use fast\Http;
+use think\Db;
 use wechat\wxBizDataCrypt;
 use app\api\model\Wxuser as WxuserModel;
+
 
 /**
  * 微信小程序登录接口
@@ -20,7 +22,7 @@ class Wxuser extends Api
     const LOGIN_URL = 'https://api.weixin.qq.com/sns/jscode2session';
     const PORTAL_URL = 'http://ids.chd.edu.cn/authserver/login';
 
-    public function get_info()
+    public function info()
     {
         
         $code = $this->request->post('code');
@@ -69,40 +71,87 @@ class Wxuser extends Api
                 unset($data);
                 $bindInfo = $this->checkBindByOpenId($result['openid']);
                 if($bindInfo){
-                    $data = [
-                        'is_bind' => true,
-                        'user' => [
-                            'openid' => $result['openid'],
-                            'type' => (strlen($bindInfo) == 6) ? '教职工' : '学生',
-                            'id' => $bindInfo,
-                            'info'=>[
-                                'yxm'=>'信息工程学院',
+                    $appendInfo = $user->where('open_id',$result['openid'])->field('build,room,mobile')->find();
+                    //bindInfo为学号，通过学号来查询学生信息.
+                    $info = Db::connect('chd_config')
+                    ->view('chd_stu_detail')
+                    ->where('XH', $bindInfo)
+                    ->view('chd_dict_nation','MZDM,MZMC','chd_stu_detail.MZDM = chd_dict_nation.MZDM')
+                    ->view('chd_dict_major','ZYDM,ZYMC','chd_stu_detail.ZYDM = chd_dict_major.ZYDM')
+                    ->view('chd_dict_college','YXDM,YXMC,YXJC','chd_stu_detail.YXDM = chd_dict_college.YXDM')
+                    ->find();
+                    //先判断是教职工还是学生
+                    if(strlen($bindInfo) == 6){
+                        
+                        $data = [
+                            'is_bind' => true,
+                            'user' => [
+                                'openid' => $result['openid'],
+                                'type' => '教职工',
+                                'id' => $bindInfo,
+                                'info'=>[
+                                    'yxm'=>$info['YXMC'],
+                                    //如果注释掉这两个，则跳转到完善信息界面
+                                    'build'=>' ',
+                                    'room'=>' ',
+                                    'mobile'=>$appendInfo['mobile']
+                                ],
+                                'name' => $info['XM']
                             ],
-                            'more' => [
-                                'zym'=>'计算机科学与技术',
-                                'nj'=>'2009级',
-                                'bj'=>'24020902',
+                            'time' => [
+                                'term' => '2017-2018 第2学期',
+                                'week' => get_weeks(),
+                                'day' => date("w")
                             ],
-                            'name' => '杨测试'
-                        ],
-                        'time' => [
-                            'term' => '2017-2018 第2学期',
-                            'week' => '3',
-                            'day' => '2'
-                        ],
-                        'token' => 'just a token',
-                        'status' => 200,
-                    ];
+                            'token' => rand_str_10(),
+                            'status' => 200,
+                        ];
+
+                    }else{
+                        //年级将学号的前四位截取
+                        $info['NJ'] = substr($info['XH'],0,4);
+                        $data = [
+                            'is_bind' => true,
+                            'user' => [
+                                'openid' => $result['openid'],
+                                'type' => '学生',
+                                'id' => $bindInfo,
+                                'info'=>[
+                                    'yxm'=>$info['YXMC'],
+                                    'build'=>$appendInfo['build'],
+                                    'room'=>$appendInfo['room'],
+                                    'mobile'=>$appendInfo['mobile']
+                                ],
+                                'more' => [
+                                    'zym'=>$info['ZYMC'],
+                                    'nj'=>$info['NJ'],
+                                    'bj'=>$info['BJDM'],
+                                    'sex' => ($info['XBDM'] == 1) ? '男' : '女',
+                                ],
+                                'name' => $info['XM']
+                            ],
+                            'time' => [
+                                'term' => '2017-2018 第2学期',
+                                'week' => get_weeks(),
+                                'day' => date("w")
+                            ],
+                            'token' => rand_str_10(),
+                            'status' => 200,
+                        ];
+                    }
                 }else{
                     $data = [
                         'is_bind' => false,
+                        'user' => [
+                            'openid' => $result['openid'],
+                        ],
                         'status' => 200,
                     ];
                 }
-                
-                $data['data'] = base64_encode(json_encode($data));
-                $data['msg'] = 'success';
-                return json($data);
+                $retData['status'] = 200;
+                $retData['data'] = base64_encode(json_encode($data));
+                $retData['msg'] = 'success';
+                return json($retData);
             }
         }else{
             //未获取到openid
@@ -117,8 +166,31 @@ class Wxuser extends Api
         //$this->success("ok",$data,$errCode);
     }
 
-    public function set(){
+    public function append(){
+        $key = json_decode(base64_decode($this->request->post('key')),true);
         
+
+        $user = new WxuserModel;
+        $appendStatus = $user->save([
+            'build' => $key['build'],
+            'room' => $key['room'],
+            'mobile'=> $key['mobile']
+        ],['open_id' => $key['openid']]);
+
+        if($appendStatus){
+            $data = [
+                'status' => 200,
+                'message' => '更新成功',
+            ];
+        }else{
+            $data = [
+                'status' => 404,
+                'message' => '更新错误',
+            ];
+        }
+        
+
+        return json($data);
     }
 
     public function bind(){
@@ -212,6 +284,13 @@ class Wxuser extends Api
             //时间原因，暂时不考虑验证码的情况
             return false;
         }
+    }
+
+    private function getTime(){
+        $time = time();
+        $d = date('d', $time);
+        $m = date('m', $time);
+        $y = date('Y', $time);
     }
 
 }
