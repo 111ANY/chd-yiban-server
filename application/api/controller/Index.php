@@ -4,7 +4,7 @@ namespace app\api\controller;
 
 use app\common\controller\Api;
 use wechat\wxBizDataCrypt;
-
+use think\Db;
 /**
  * 首页接口
  */

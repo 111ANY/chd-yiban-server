@@ -10,9 +10,10 @@ use fast\Random;
 use wechat\wxBizDataCrypt;
 use app\api\model\Wxuser as WxuserModel;
 use app\api\model\Repairlist as RepairlistModel;
+use app\common\library\Sms as Smslib;
 
 /**
- * 获取课表
+ * 报修
  */
 class Repair extends Api
 {
@@ -25,10 +26,13 @@ class Repair extends Api
         //将数据写入数据库
         $repair = new RepairlistModel;
         $res = $repair->saveData($key);
+        // 发送短信功能
+        // $mobile = '15991651685';
+        // $msg = "[宿舍管理系统]通知：刚有新的订单产生，请前往处理";
+        // $res = Smslib::notice($mobile, $msg);
         $info = [
             'status' => 200,
             'message' => 'success',
-            'data' => $key
         ];
         return json($info);
     }
@@ -106,10 +110,13 @@ class Repair extends Api
 
     public function submit_rate(){
         $key = json_decode(base64_decode($this->request->post('key')),true);
+        $repair = RepairlistModel::get((int)$key['bxID']);
+        $repair -> star = $key['star'];
+        $repair -> message = $key['message'];
+        $res = $repair -> save();
         $info = [
             'status' => 200,
             'message' => 'success',
-            'data' => $key,
         ];
         return json($info);
     }

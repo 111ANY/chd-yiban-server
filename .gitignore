@@ -2,9 +2,11 @@
 /thinkphp/
 /vendor/
 /runtime/*
-/addons/*
+/addons/adminlte
+/addons/bootstrap
+/addons/example
+/sjkglrj/*
 /application/admin/command/Install/*.lock
-/public/assets/libs/
 /public/assets/addons/*
 /public/uploads/*
 .idea
@@ -13,3 +15,10 @@ composer.lock
 *.css.map
 !.gitkeep
 .env
+.user.ini
+.well-known/
+public/assets/js/addons.js
+public/assets/js/backend/example/*
+application/admin/controller/example/*
+application/admin/view/example/*
+
