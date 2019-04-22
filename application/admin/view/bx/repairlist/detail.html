@@ -57,9 +57,6 @@
                            </div><!-- /.modal-dialog -->
                        </div>
                     {/foreach}
-                    <!-- {foreach name="$row.image" item="vo" key="s"}
-                    <img src={$vo} height="100" width="100"> -->
-                    <!-- {/foreach} -->
                 </p>
             </div>           
         </div>
@@ -104,18 +101,23 @@
                 </table>
             </div>
         </div>
-        <div class="form-group">
-            <label>指派单位</label>
-            <select class="form-control" id="company">
-                {foreach name="$row.company" item="vo"}     
-                <option value="{$vo.id}">{$vo.nickname}</option>
-                {/foreach}
-            </select>
-        </div>
+
+        <form id="cxselectform" action="">
+            <div class="row">
+                <div class="col-xs-9">
+                    <label>指派单位</label>
+                    <div class="form-inline" data-toggle="cxselect" data-selects="company,worker"  data-required="true">
+                        <select class="company form-control" name="company" id="company"   data-url="bx/repairlist/getcompany"></select>
+                        <select class="worker form-control" name="worker" id="worker" data-url="bx/repairlist/getworker"></select>
+                    </div>
+                </div>
+            </div>
+        </form>
+
         <div class="row no-print">
             <div class="col-xs-12">
                 <button type="button" class="btn  btn-success btn-distribute pull-right" style="margin-right: 5px;">
-                <i class="fa fa-times fa-hand-paper-o"></i> 分配单位
+                <i class="fa fa-times fa-hand-paper-o"></i> 分配
                 </button>
             </div>
         </div>
