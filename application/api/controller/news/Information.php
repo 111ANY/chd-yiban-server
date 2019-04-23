@@ -45,7 +45,7 @@ class Information extends Api
         }
         $page = max(1, $page);
         $params['limit'] = ($page - 1) * 10 . ',10';
-        $params['orderby'] = 'id';
+        $params['orderby'] = 'createtime';
         if ($channel == 47) {
             $params['channel'] = [3, 4, 5, 7];
             $params['flag'] = 'recommend';
@@ -76,11 +76,6 @@ class Information extends Api
         // if ($action && $this->request->isPost()) {
         //     return $this->$action();
         // }
-
-        //获取文章id以及用户open_id,写入cms_archives_log
-        $article_id = $this->request->param('id');
-        $open_id = $this->request->param('openid');
-        $this->insertLog($article_id,$open_id);
         $diyname = $this->request->param('diyname');
         if ($diyname && !is_numeric($diyname)) {
             $archives = ArchivesModel::getByDiyname($diyname);
@@ -173,14 +168,5 @@ class Information extends Api
 
         return json($info);
 
-    }
-
-    private function insertLog($article_id,$open_id)
-    {
-        $res = Db::name('cms_archives_log') -> insert([
-            'open_id'     => $open_id,
-            'archives_id' => $article_id,
-            'timestamp'   => time(),
-        ]);
     }
 }
